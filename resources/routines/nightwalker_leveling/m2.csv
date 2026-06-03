@@ -1,0 +1,20 @@
+*, x=0.778, y=0.050, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=left, attacks=2, repetitions=2
+    ErdaShower, direction=left, jump=False
+*, x=0.503, y=0.222, frequency=1, skip=False, adjust=False
+    LevelingRotation, direction=left, use_long_cooldowns=True, use_common_summons=True
+    Arachnid
+    SoulSkill
+    ShadowBite
+*, x=0.257, y=0.150, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=right, attacks=2, repetitions=2
+*, x=0.252, y=0.383, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=left, attacks=2, repetitions=1
+*, x=0.503, y=0.383, frequency=1, skip=False, adjust=False
+    DarkOmen
+*, x=0.714, y=0.383, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=right, attacks=2, repetitions=2
+*, x=0.521, y=0.383, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=left, attacks=3, repetitions=1
+*, x=0.503, y=0.222, frequency=7, skip=False, adjust=False
+    Buff

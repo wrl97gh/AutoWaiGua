@@ -1,0 +1,13 @@
+*, x=0.437, y=0.186, frequency=1, skip=False, adjust=False
+    ShadowBite
+    DarkOmen, direction=left
+    ShadowSpark, direction=left, attacks=2, repetitions=1
+    ShadowSpark, direction=right, attacks=2, repetitions=1
+    ShadowSpear
+*, x=0.437, y=0.096, frequency=1, skip=False, adjust=True
+    ShadowSpark, direction=right, attacks=2, repetitions=1
+*, x=0.473, y=0.275, frequency=1, skip=False, adjust=False
+    QuintupleStar, direction=left, attacks=1, repetitions=1
+    ShadowSpark, direction=left, attacks=2, repetitions=1
+*, x=0.413, y=0.096, frequency=5, skip=False, adjust=False
+    Buff

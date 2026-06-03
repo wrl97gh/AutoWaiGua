@@ -1,0 +1,10 @@
+GitPython
+mss
+numpy
+opencv-python-headless
+Pillow
+pynput
+pygame
+pyobjc-framework-Quartz; platform_system == "Darwin"
+pywin32; platform_system == "Windows"
+tensorflow

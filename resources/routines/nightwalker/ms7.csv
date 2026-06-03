@@ -1,0 +1,8 @@
+*, x=0.257, y=0.383, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=left, attacks=2, repetitions=2
+    ShadowSpark, direction=right, attacks=2, repetitions=2
+*, x=0.246, y=0.198, frequency=1, skip=False, adjust=False
+    ShadowBite
+*, x=0.695, y=0.246, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=left, attacks=2, repetitions=2
+    ShadowSpark, direction=right, attacks=2, repetitions=2

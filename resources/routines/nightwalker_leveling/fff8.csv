@@ -1,0 +1,20 @@
+*, x=0.560, y=0.201, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=left, attacks=3, repetitions=2
+*, x=0.385, y=0.248, frequency=1, skip=False, adjust=False
+    DarkOmen, direction=left
+    ShadowBite
+    ShadowSpark, direction=right, attacks=3, repetitions=5
+*, x=0.355, y=0.376, frequency=1, skip=False, adjust=True
+    ShadowBite
+    ShadowSpark, direction=right, attacks=3, repetitions=2
+*, x=0.590, y=0.376, frequency=1, skip=False, adjust=True
+    ShadowSpark, direction=left, attacks=3, repetitions=5
+*, x=0.432, y=0.248, frequency=1, skip=False, adjust=False
+    Dominion
+    Arachnid
+*, x=0.285, y=0.148, frequency=1, skip=False, adjust=True
+    ShadowBite
+    ShadowSpark, direction=right, attacks=5, repetitions=3
+    ErdaShower, direction=right, jump=False
+*, x=0.432, y=0.248, frequency=7, skip=False, adjust=False
+    Buff
