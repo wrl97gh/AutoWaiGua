@@ -146,6 +146,105 @@ Auto Maple has the ability to automatically solve "runes", or in-game arrow key 
 
 
 <h2 align="center">
+  Fork Additions
+</h2>
+
+<h3>
+  Remote Control & Emergency Stop (Telegram)
+</h3>
+
+<p>
+Auto Maple can push alerts to your phone and accept remote commands through a Telegram bot. Pushed events include: siren alerts (black screen, unsolved rune, failed struggle) with a screenshot, rune solve results, bot start/stop state changes, and other players appearing on the map.
+</p>
+
+<b>Setup:</b>
+<ol>
+  <li>
+    In Telegram, message <b>@BotFather</b>, send <code>/newbot</code>, follow the prompts, and copy the bot token (looks like <code>1234567:ABC-xxxx</code>).
+  </li>
+  <li>
+    Start Auto Maple, open <b>Settings &rarr; Remote Control (Telegram)</b>, paste the token, and click <b>Save</b>.
+  </li>
+  <li>
+    Send any message to your new bot. The bot replies with your <b>chat id</b> (it is also printed in the Auto Maple console). Paste it into the <b>Chat id</b> field and click <b>Save</b>.
+  </li>
+  <li>
+    Click <b>Send test message</b>. If your phone receives it, you are done.
+  </li>
+</ol>
+
+<b>Commands</b> (only the configured chat id is obeyed; messages from anyone else are ignored):
+<ul>
+  <li><code>/stop</code> &mdash; emergency stop. Stops the bot and silences an active siren.</li>
+  <li><code>/start</code> &mdash; recalibrates the minimap, then resumes the bot.</li>
+  <li><code>/status</code> &mdash; current state, routine, player position, rune status, uptime.</li>
+  <li><code>/screenshot</code> &mdash; sends the current game frame.</li>
+</ul>
+
+<p>
+Notes: the token is stored in plaintext in <code>.settings/remote</code> (gitignored &mdash; do not share that file). Commands sent while Auto Maple was offline are discarded on startup, so a stale <code>/start</code> can never enable the bot unexpectedly.
+</p>
+
+<h3>
+  Control-Break (Struggle) Auto-Escape
+</h3>
+
+<p>
+When a monster grabs the character and the left/right arrow QTE appears, Auto Maple detects the arrow-button UI (both buttons, multiple scales, tolerant of effects covering one button) and mashes left/right at a human-like pace (~10 presses/s with jitter and hesitations) until the UI disappears. The bot's own key output is paused during the struggle so held movement keys cannot corrupt the input. Each trigger saves a screenshot to <code>assets/debug/struggle/</code> and pushes a Telegram notification; after 15 seconds without escaping, the siren alert fires.
+</p>
+
+<p>
+The detection templates live at <code>assets/struggle_left_template.png</code> and <code>assets/struggle_right_template.png</code>. If the game UI changes, regenerate them from a screenshot showing both buttons:
+<pre><code>python3 tools/make_struggle_templates.py "path/to/screenshot.png"</code></pre>
+To verify that synthetic input reaches the game, run <code>python3 tools/test_struggle_input.py</code> and watch the character shuffle left/right.
+</p>
+
+<h3>
+  Portal Guard
+</h3>
+
+<p>
+Portals near farming spots can swallow accidental UP presses and change maps. Auto Maple now tracks portal icons on the minimap (template: <code>assets/portal_template.png</code>) and suppresses synthetic UP presses &mdash; including force-releasing an already-held UP &mdash; whenever the player is within <code>portal_lock_radius</code> (default <code>0.05</code>) of a portal. Detected portals are remembered for 120 seconds, so the player's own dot covering the icon while standing on a portal does not break the guard.
+</p>
+
+<p>
+Tune or disable it per routine with a Setting line in the CSV: <code>$, portal_lock_radius, 0.03</code> (use <code>0</code> for routines that intentionally take portals).
+</p>
+
+<h3>
+  Rune Dataset, Labeling & Engine Evaluation
+</h3>
+
+<p>
+Every rune solve attempt saves its screenshots and metadata (engine, prediction, whether the panel disappeared after entry) to <code>assets/rune_dataset/</code> &mdash; toggle in <b>Settings &rarr; Runes</b>. This builds a ground-truth corpus over time:
+</p>
+
+<ul>
+  <li>
+    <b>Label</b>: <code>python3 tools/rune_labeler.py</code> &mdash; press the four arrow keys, then Enter to save and jump to the next unlabeled session (<code>s</code> skip, <code>f</code> full frame, <code>--stats</code> for progress). Legacy debug sessions under <code>assets/debug/rune/</code> are picked up too.
+  </li>
+  <li>
+    <b>Evaluate</b>: <code>python3 tools/rune_eval.py</code> &mdash; scores both detection engines against the labels (exact match, wrong-entry rate, per-arrow accuracy, latency). Use <code>--engines</code>, <code>--cpu</code>, <code>--roots</code> to narrow the run.
+  </li>
+</ul>
+
+<h3>
+  Humanization
+</h3>
+
+<ul>
+  <li>Buff and pet-feed cooldowns re-fire with random late-side jitter instead of exact periods.</li>
+  <li>Buff salvos use randomized gaps between casts; key hold times are non-zero with jitter.</li>
+  <li>Movement and attacks occasionally hesitate; fixed combo delays carry narrow random jitter.</li>
+  <li>The bot idles for 8&ndash;45 seconds every 20&ndash;45 minutes (skipped while a rune is active).</li>
+  <li>Other-player detection is active again: while anyone else is on the map, the heavier <code>stage_fright</code> hesitation kicks in, a ding plays, and a Telegram notification is sent.</li>
+</ul>
+
+<br>
+
+
+
+<h2 align="center">
   Video Demonstration
 </h2>
 
