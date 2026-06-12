@@ -1,0 +1,30 @@
+*, x=0.297, y=0.308, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=right, attacks=6, repetitions=6
+    ShadowBite
+    ShadowSpear
+*, x=0.564, y=0.308, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=left, attacks=6, repetitions=6
+    ShadowSpear
+    SoulSkill
+*, x=0.564, y=0.215, frequency=1, skip=False, adjust=False
+    Arachnid
+    LevelingRotation, direction=left, use_long_cooldowns=True, use_common_summons=True
+    ShadowBite
+*, x=0.750, y=0.308, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=left, attacks=7, repetitions=7
+    ShadowBite
+    SolarCrest
+*, x=0.833, y=0.115, frequency=1, skip=False, adjust=False
+    DarkOmen
+    ShadowSpark, direction=left, attacks=6, repetitions=6
+    ErdaShower, direction=left, jump=False
+    ShadowSpear
+*, x=0.453, y=0.099, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=right, attacks=6, repetitions=6
+*, x=0.221, y=0.116, frequency=1, skip=False, adjust=False
+    ShadowBite
+    ShadowSpark, direction=right, attacks=6, repetitions=6
+    ShadowIllusion
+*, x=0.564, y=0.215, frequency=1, skip=False, adjust=False
+    Buff
+    Silence

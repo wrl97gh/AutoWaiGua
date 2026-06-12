@@ -17,6 +17,13 @@ class Minimap(LabelFrame):
                                 borderwidth=0, highlightthickness=0)
         self.canvas.pack(expand=True, fill='both', padx=5, pady=5)
         self.container = None
+        self.player_pos_var = tk.StringVar(value='Player: --')
+        self.rune_pos_var = tk.StringVar(value='Rune: inactive')
+
+        coords = tk.Frame(self)
+        coords.pack(side=tk.TOP, fill='x', padx=5, pady=(0, 5))
+        tk.Label(coords, textvariable=self.player_pos_var, anchor=tk.W).pack(side=tk.LEFT, expand=True, fill='x')
+        tk.Label(coords, textvariable=self.rune_pos_var, anchor=tk.E).pack(side=tk.RIGHT, expand=True, fill='x')
 
     def display_minimap(self):
         """Updates the Main page with the current minimap."""
@@ -27,6 +34,11 @@ class Minimap(LabelFrame):
             rune_pos = minimap['rune_pos']
             path = minimap['path']
             player_pos = minimap['player_pos']
+            self.player_pos_var.set(f'Player: {self._format_pos(player_pos)}')
+            if rune_active:
+                self.rune_pos_var.set(f'Rune: {self._format_pos(rune_pos)}')
+            else:
+                self.rune_pos_var.set('Rune: inactive')
 
             img = cv2.cvtColor(minimap['minimap'], cv2.COLOR_BGR2RGB)
             height, width, _ = img.shape
@@ -80,3 +92,9 @@ class Minimap(LabelFrame):
             else:
                 self.canvas.itemconfig(self.container, image=img)
             self._img = img                 # Prevent garbage collection
+
+    @staticmethod
+    def _format_pos(pos):
+        if pos is None or len(pos) < 2:
+            return '--'
+        return f'({pos[0]:.3f}, {pos[1]:.3f})'

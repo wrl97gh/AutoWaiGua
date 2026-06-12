@@ -75,9 +75,7 @@ class GUI:
     def start(self):
         """Starts the GUI as well as any scheduled functions."""
 
-        display_thread = threading.Thread(target=self._display_minimap)
-        display_thread.daemon = True
-        display_thread.start()
+        self._display_minimap()
 
         layout_thread = threading.Thread(target=self._save_layout)
         layout_thread.daemon = True
@@ -86,10 +84,9 @@ class GUI:
         self.root.mainloop()
 
     def _display_minimap(self):
-        delay = 1 / GUI.DISPLAY_FRAME_RATE
-        while True:
-            self.view.minimap.display_minimap()
-            time.sleep(delay)
+        self.view.minimap.display_minimap()
+        delay = round(1000 / GUI.DISPLAY_FRAME_RATE)
+        self.root.after(delay, self._display_minimap)
 
     def _save_layout(self):
         """Periodically saves the current Layout object."""

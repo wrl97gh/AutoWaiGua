@@ -4,7 +4,8 @@ import cv2
 import os
 import tensorflow as tf
 import numpy as np
-from src.common import platform, utils
+from src.common import utils
+from src.detection import rune_roi
 
 MODEL_DIR = 'assets/models/rune_model_rnn_filtered_cannied/saved_model'
 REQUIRED_MODEL_FILES = (
@@ -12,14 +13,53 @@ REQUIRED_MODEL_FILES = (
     os.path.join('variables', 'variables.index'),
     os.path.join('variables', 'variables.data-00000-of-00001'),
 )
-WINDOWS_ARROW_HSV_RANGES = (
-    ((1, 100, 100), (75, 255, 255)),
+DEFAULT_ARROW_HSV_RANGES = (
+    ((35, 140, 130), (75, 255, 255)),
 )
-MACOS_ARROW_HSV_RANGES = (
-    # macOS screenshots shift rune arrows toward cyan/blue and dim some glow
-    # pixels. This range was tuned against assets/debug/rune/20260601_153252.
-    ((1, 60, 90), (125, 255, 255)),
+GREEN_ARROW_HSV_RANGES = DEFAULT_ARROW_HSV_RANGES
+CYAN_ARROW_HSV_RANGES = (
+    ((85, 120, 120), (118, 255, 255)),
 )
+RED_ARROW_HSV_RANGES = (
+    ((0, 120, 120), (12, 255, 255)),
+    ((165, 120, 120), (179, 255, 255)),
+)
+YELLOW_ARROW_HSV_RANGES = (
+    ((18, 120, 120), (38, 255, 255)),
+)
+BROAD_ARROW_HSV_RANGES = (
+    ((0, 110, 110), (75, 255, 255)),
+    ((85, 140, 130), (118, 255, 255)),
+    ((145, 140, 130), (179, 255, 255)),
+)
+ARROW_HSV_PROFILES = (
+    ('green', GREEN_ARROW_HSV_RANGES),
+    ('cyan', CYAN_ARROW_HSV_RANGES),
+    ('red', RED_ARROW_HSV_RANGES),
+    ('yellow', YELLOW_ARROW_HSV_RANGES),
+    ('broad', BROAD_ARROW_HSV_RANGES),
+)
+SLOT_ARROW_HSV_PROFILES = (
+    ('broad', BROAD_ARROW_HSV_RANGES),
+)
+MIN_ARROW_MASK_RATIO = 0.003
+MAX_ARROW_MASK_RATIO = 0.12
+MIN_SLOT_MASK_RATIO = 0.002
+MAX_SLOT_MASK_RATIO = 0.2
+MAX_BROAD_SLOT_MASK_RATIO = 0.22
+SLOT_EARLY_ACCEPT_SCORE = 0.35
+SLOT_OVERLAP_RATIO = 0.12
+RUNE_PANEL_BLUE_RANGES = (
+    ((88, 30, 70), (130, 170, 220)),
+)
+RUNE_PANEL_BORDER_RANGES = (
+    ((18, 80, 120), (42, 255, 255)),
+)
+MIN_RUNE_PANEL_BLUE_RATIO = 0.3
+MIN_RUNE_PANEL_BORDER_RATIO = 0.006
+STRONG_RUNE_PANEL_BORDER_RATIO = 0.02
+MODEL_PAD_HEIGHT = 384
+MODEL_PAD_WIDTH = 455
 
 
 #########################
@@ -57,25 +97,98 @@ def canny(image):
     return colored
 
 
-def filter_color(image):
+def filter_color(image, ranges=None):
     """
     Filters out all colors not between orange and green on the HSV scale, which
     eliminates some noise around the arrows.
     :param image:   The input image.
+    :param ranges:  Optional HSV ranges to keep.
     :return:        The color-filtered image.
     """
 
+    return _mask_image(image, _color_mask(image, ranges))
+
+
+def _color_mask(image, ranges=None):
+    if ranges is None:
+        ranges = DEFAULT_ARROW_HSV_RANGES
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    ranges = WINDOWS_ARROW_HSV_RANGES if platform.IS_MACOS else WINDOWS_ARROW_HSV_RANGES
     mask = cv2.inRange(hsv, ranges[0][0], ranges[0][1])
     for lower, upper in ranges[1:]:
         mask = cv2.bitwise_or(mask, cv2.inRange(hsv, lower, upper))
+    return mask
 
-    # Mask the image
-    color_mask = mask > 0
-    arrows = np.zeros_like(image, np.uint8)
-    arrows[color_mask] = image[color_mask]
-    return arrows
+
+def _mask_image(image, mask):
+    return cv2.bitwise_and(image, image, mask=mask)
+
+
+def _arrow_hsv_profiles():
+    return ARROW_HSV_PROFILES
+
+
+def _slot_hsv_profiles():
+    return SLOT_ARROW_HSV_PROFILES
+
+
+def _extract_rune_arrow_roi(image, debug_dir=None, debug_prefix=''):
+    cropped = rune_roi.crop_screen_region(image)
+    _save_debug_image(debug_dir, f'{debug_prefix}01_frame.png', image)
+    _save_debug_image(debug_dir, f'{debug_prefix}02_cropped.png', cropped)
+    if cropped.size == 0:
+        _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}cropped image is empty')
+        return None, None
+
+    arrow_roi = rune_roi.crop_arrow_region(cropped)
+    _save_debug_image(debug_dir, f'{debug_prefix}02_arrow_roi.png', arrow_roi)
+    if arrow_roi.size == 0:
+        _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}arrow roi is empty')
+        return cropped, None
+    return cropped, arrow_roi
+
+
+def _mask_ratio(mask):
+    return np.count_nonzero(mask) / mask.size if mask.size else 0
+
+
+def find_rune_panel(image, debug_dir=None, debug_prefix=''):
+    """
+    Returns True when the rune input panel is visible in IMAGE.
+    """
+
+    _, arrow_roi = _extract_rune_arrow_roi(image, debug_dir=debug_dir, debug_prefix=debug_prefix)
+    if arrow_roi is None:
+        return False
+    visible, metrics = _rune_panel_visible(arrow_roi)
+    _save_debug_text(
+        debug_dir,
+        'debug.txt',
+        f"{debug_prefix}panel blue={metrics['blue']:.4f} "
+        f"border={metrics['border']:.4f} visible={visible}"
+    )
+    return visible
+
+
+def _rune_panel_visible(arrow_roi):
+    blue = _mask_ratio(_color_mask(arrow_roi, RUNE_PANEL_BLUE_RANGES))
+    border = _mask_ratio(_color_mask(arrow_roi, RUNE_PANEL_BORDER_RANGES))
+    visible = (
+        border >= STRONG_RUNE_PANEL_BORDER_RATIO or
+        (blue >= MIN_RUNE_PANEL_BLUE_RATIO and border >= MIN_RUNE_PANEL_BORDER_RATIO)
+    )
+    return visible, {'blue': blue, 'border': border}
+
+
+def _split_rune_slots(arrow_roi):
+    _, width = arrow_roi.shape[:2]
+    slot_width = width / 4
+    overlap = slot_width * SLOT_OVERLAP_RATIO
+    slots = []
+    for i in range(4):
+        left = max(0, round(i * slot_width - overlap))
+        right = min(width, round((i + 1) * slot_width + overlap))
+        slots.append(arrow_roi[:, left:right])
+    return slots
 
 
 def run_inference_for_single_image(model, image):
@@ -138,7 +251,7 @@ def sort_by_confidence(model, image):
     zipped = list(zip(output_dict['detection_scores'],
                       output_dict['detection_boxes'],
                       output_dict['detection_classes']))
-    pruned = [t for t in zipped if t[0] > 0] #0.5
+    pruned = [t for t in zipped if t[0] > 0.3] #0.5
     pruned.sort(key=lambda x: x[0], reverse=True)
     result = pruned[:4]
     return result
@@ -156,11 +269,158 @@ def get_boxes(model, image):
     zipped = list(zip(output_dict['detection_scores'],
                       output_dict['detection_boxes'],
                       output_dict['detection_classes']))
-    pruned = [t for t in zipped if t[0] > 0] #0.5
+    pruned = [t for t in zipped if t[0] > 0.3] #0.5
     pruned.sort(key=lambda x: x[0], reverse=True)
     pruned = pruned[:4]
     boxes = [t[1:] for t in pruned]
     return boxes
+
+
+def detect_rune_slots(model, image, debug_dir=None, debug_prefix=''):
+    """
+    Detects rune arrows by splitting the rune panel into four independent slots.
+    :return:    A four-item list containing directions or None, None if the rune panel is absent.
+    """
+
+    _, arrow_roi = _extract_rune_arrow_roi(image, debug_dir=debug_dir, debug_prefix=debug_prefix)
+    if arrow_roi is None:
+        return None
+
+    panel_visible, metrics = _rune_panel_visible(arrow_roi)
+    _save_debug_text(
+        debug_dir,
+        'debug.txt',
+        f"{debug_prefix}panel blue={metrics['blue']:.4f} "
+        f"border={metrics['border']:.4f} visible={panel_visible}"
+    )
+    if not panel_visible:
+        _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}rune panel not visible')
+        return None
+
+    slots = _split_rune_slots(arrow_roi)
+    classes = []
+    for index, slot in enumerate(slots):
+        slot_prefix = f'{debug_prefix}slot{index}_'
+        _save_debug_image(debug_dir, f'{slot_prefix}00.png', slot)
+        direction = _detect_slot_arrow(
+            model,
+            slot,
+            debug_dir=debug_dir,
+            debug_prefix=slot_prefix,
+        )
+        classes.append(direction)
+    _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}slot_classes: {classes}')
+    return classes
+
+
+def _detect_slot_arrow(model, slot, debug_dir=None, debug_prefix=''):
+    best = None
+
+    for profile_name, ranges in _slot_hsv_profiles():
+        profile_prefix = f'{debug_prefix}{profile_name}_'
+        candidate = _detect_slot_arrow_profile(
+            model,
+            slot,
+            profile_name,
+            ranges,
+            debug_dir=debug_dir,
+            debug_prefix=profile_prefix,
+        )
+        if candidate is None:
+            continue
+        if candidate[1] >= SLOT_EARLY_ACCEPT_SCORE:
+            best = candidate
+            break
+        if best is None or candidate[1] > best[1]:
+            best = candidate
+
+    if best is None:
+        _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}class: None')
+        return None
+
+    direction, score, profile_name, source = best
+    _save_debug_text(
+        debug_dir,
+        'debug.txt',
+        f'{debug_prefix}class: {direction} score={score:.3f} '
+        f'profile={profile_name} source={source}'
+    )
+    return direction
+
+
+def _detect_slot_arrow_profile(model, slot, profile_name, ranges, debug_dir=None, debug_prefix=''):
+    mask = _color_mask(slot, ranges)
+    ratio = _mask_ratio(mask)
+    _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}mask ratio: {ratio:.4f}')
+    if ratio < MIN_SLOT_MASK_RATIO:
+        _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}skipping sparse slot')
+        return None
+
+    max_ratio = MAX_BROAD_SLOT_MASK_RATIO if profile_name == 'broad' else MAX_SLOT_MASK_RATIO
+    if ratio > max_ratio:
+        _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}skipping noisy slot')
+        return None
+
+    filtered = _mask_image(slot, mask)
+    cannied = canny(filtered)
+    _save_debug_image(debug_dir, f'{debug_prefix}01_filtered.png', filtered)
+    _save_debug_image(debug_dir, f'{debug_prefix}02_cannied.png', cannied)
+
+    preprocessed = _pad_for_model(cannied)
+    _save_debug_image(debug_dir, f'{debug_prefix}03_preprocessed.png', preprocessed)
+    candidate = _classify_preprocessed_arrow(model, preprocessed)
+    if candidate is None:
+        _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}class: None')
+        return None
+
+    direction, score, source = candidate
+    _save_debug_text(
+        debug_dir,
+        'debug.txt',
+        f'{debug_prefix}class: {direction} score={score:.3f} source={source}'
+    )
+    return direction, score, profile_name, source
+
+
+def _pad_for_model(image):
+    height, width, channels = image.shape
+    scale = min(MODEL_PAD_WIDTH / width, MODEL_PAD_HEIGHT / height, 1)
+    if scale < 1:
+        image = cv2.resize(
+            image,
+            (max(1, round(width * scale)), max(1, round(height * scale))),
+            interpolation=cv2.INTER_AREA
+        )
+        height, width, channels = image.shape
+
+    preprocessed = np.full((MODEL_PAD_HEIGHT, MODEL_PAD_WIDTH, channels), (0, 0, 0), dtype=np.uint8)
+    x_offset = (MODEL_PAD_WIDTH - width) // 2
+    y_offset = (MODEL_PAD_HEIGHT - height) // 2
+    if x_offset >= 0 and y_offset >= 0:
+        preprocessed[y_offset:y_offset+height, x_offset:x_offset+width] = image
+    return preprocessed
+
+
+def _classify_preprocessed_arrow(model, image):
+    label_map = {1: 'up', 2: 'down', 3: 'left', 4: 'right'}
+    converter = {'up': 'right', 'down': 'left'}
+    candidates = []
+
+    for score, _, class_id in sort_by_confidence(model, image):
+        if class_id in label_map:
+            candidates.append((label_map[class_id], float(score), 'direct'))
+
+    rotated = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    for score, _, class_id in sort_by_confidence(model, rotated):
+        if class_id in [1, 2]:
+            direction = converter[label_map[class_id]]
+            candidates.append((direction, float(score), 'rotated'))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    return candidates[0]
 
 
 @utils.run_if_enabled
@@ -174,21 +434,44 @@ def merge_detection(model, image, debug_dir=None, debug_prefix=''):
     :return:        A list of four arrow directions.
     """
 
+    classes = []
+    
+    _, cropped = _extract_rune_arrow_roi(image, debug_dir=debug_dir, debug_prefix=debug_prefix)
+    if cropped is None:
+        return classes
+
+    for profile_name, ranges in _arrow_hsv_profiles():
+        profile_prefix = f'{debug_prefix}{profile_name}_'
+        classes = _merge_detection_profile(
+            model,
+            cropped,
+            ranges,
+            debug_dir=debug_dir,
+            debug_prefix=profile_prefix,
+        )
+        _save_debug_text(debug_dir, 'debug.txt', f'{profile_prefix}classes: {classes}')
+        if len(classes) == 4:
+            return classes
+
+    return classes
+
+
+def _merge_detection_profile(model, cropped, ranges, debug_dir=None, debug_prefix=''):
     label_map = {1: 'up', 2: 'down', 3: 'left', 4: 'right'}
     converter = {'up': 'right', 'down': 'left'}         # For the 'rotated inferences'
     classes = []
-    
-    # Preprocessing
-    height, width, channels = image.shape
-    crop_top = round(height * 120 / 768)
-    cropped = image[crop_top:height//2, width//4:3*width//4]
-    _save_debug_image(debug_dir, f'{debug_prefix}01_frame.png', image)
-    _save_debug_image(debug_dir, f'{debug_prefix}02_cropped.png', cropped)
-    if cropped.size == 0:
-        _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}cropped image is empty')
+
+    mask = _color_mask(cropped, ranges)
+    ratio = _mask_ratio(mask)
+    _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}mask ratio: {ratio:.4f}')
+    if ratio < MIN_ARROW_MASK_RATIO:
+        _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}skipping sparse frame')
+        return classes
+    if ratio > MAX_ARROW_MASK_RATIO:
+        _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}skipping noisy frame')
         return classes
 
-    filtered = filter_color(cropped)
+    filtered = _mask_image(cropped, mask)
     cannied = canny(filtered)
     _save_debug_image(debug_dir, f'{debug_prefix}03_filtered.png', filtered)
     _save_debug_image(debug_dir, f'{debug_prefix}04_cannied.png', cannied)
@@ -196,7 +479,7 @@ def merge_detection(model, image, debug_dir=None, debug_prefix=''):
     # Isolate the rune box
     height, width, channels = cannied.shape
     boxes = get_boxes(model, cannied)
-    _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}boxes found: {len(boxes)}\n{debug_prefix}classes: {classes}')
+    _save_debug_text(debug_dir, 'debug.txt', f'{debug_prefix}boxes found: {len(boxes)}')
     if len(boxes) == 4:      # Only run further inferences if arrows have been correctly detected
         y_mins = [b[0][0] for b in boxes]
         x_mins = [b[0][1] for b in boxes]
@@ -213,9 +496,8 @@ def merge_detection(model, image, debug_dir=None, debug_prefix=''):
             return classes
 
         # Pad the rune box with black borders, effectively eliminating the noise around it
-        pad_height, pad_width = 384, 455
         height, width, channels = rune_box.shape
-        scale = min(pad_width / width, pad_height / height, 1)
+        scale = min(MODEL_PAD_WIDTH / width, MODEL_PAD_HEIGHT / height, 1)
         if scale < 1:
             rune_box = cv2.resize(
                 rune_box,
@@ -224,9 +506,9 @@ def merge_detection(model, image, debug_dir=None, debug_prefix=''):
             )
             height, width, channels = rune_box.shape
 
-        preprocessed = np.full((pad_height, pad_width, channels), (0, 0, 0), dtype=np.uint8)
-        x_offset = (pad_width - width) // 2
-        y_offset = (pad_height - height) // 2
+        preprocessed = np.full((MODEL_PAD_HEIGHT, MODEL_PAD_WIDTH, channels), (0, 0, 0), dtype=np.uint8)
+        x_offset = (MODEL_PAD_WIDTH - width) // 2
+        y_offset = (MODEL_PAD_HEIGHT - height) // 2
 
         if x_offset >= 0 and y_offset >= 0:
             preprocessed[y_offset:y_offset+height, x_offset:x_offset+width] = rune_box
@@ -235,7 +517,7 @@ def merge_detection(model, image, debug_dir=None, debug_prefix=''):
         # Run detection on preprocessed image
         lst = sort_by_confidence(model, preprocessed)
         lst.sort(key=lambda x: x[1][1])
-        classes = [label_map[item[2]] for item in lst]
+        classes = [label_map[item[2]] for item in lst if item[2] in label_map]
 
         # Run detection on rotated image
         rotated = cv2.rotate(preprocessed, cv2.ROTATE_90_COUNTERCLOCKWISE)

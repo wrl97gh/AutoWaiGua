@@ -19,8 +19,17 @@ enabled = False
 # If there is another player in the map, Auto Maple will purposely make random human-like mistakes
 stage_fright = False
 
+# Whether continuous siren alerts should be ignored without stopping the bot
+ignore_siren_alerts = False
+
+# Set to True (e.g. by a remote /stop command) to silence an active siren alert
+alert_ack = False
+
 # Represents the current shortest path that the bot is taking
 path = []
+
+# Portal locations on the minimap (relative coordinates), updated by Notifier
+portal_positions = []
 
 
 #############################
@@ -40,6 +49,9 @@ capture = None
 
 # Shares the keyboard listener
 listener = None
+
+# Shares the remote notification/control module
+remote = None
 
 # Shares the gui to all modules
 gui = None
