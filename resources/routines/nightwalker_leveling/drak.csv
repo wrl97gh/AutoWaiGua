@@ -1,0 +1,10 @@
+*, x=0.443, y=0.425, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=left, attacks=2, repetitions=1
+    ShadowSpark, direction=right, attacks=2, repetitions=1
+*, x=0.443, y=0.311, frequency=1, skip=False, adjust=False
+    ShadowSpark, direction=left, attacks=2, repetitions=1
+    ShadowSparkRandomDirection
+*, x=0.413, y=0.222, frequency=1, skip=False, adjust=False
+    ShadowSparkRandomDirection
+*, x=0.419, y=0.058, frequency=1, skip=False, adjust=False
+    ShadowSparkRandomDirection

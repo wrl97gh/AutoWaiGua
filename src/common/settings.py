@@ -70,6 +70,7 @@ SETTING_VALIDATORS = {
     'move_tolerance': float,
     'adjust_tolerance': float,
     'rune_interact_tolerance': float,
+    'portal_lock_radius': float,
     'record_layout': validate_boolean,
     'buff_cooldown': validate_nonnegative_int
 }
@@ -79,9 +80,11 @@ def reset():
     """Resets all settings to their default values."""
 
     global move_tolerance, adjust_tolerance, rune_interact_tolerance, record_layout, buff_cooldown
+    global portal_lock_radius
     move_tolerance = 0.1
     adjust_tolerance = 0.01
-    rune_interact_tolerance = 0.035
+    rune_interact_tolerance = 0.03
+    portal_lock_radius = 0.05
     record_layout = False
     buff_cooldown = 180
 
@@ -93,7 +96,11 @@ move_tolerance = 0.1
 adjust_tolerance = 0.01
 
 # The maximum normalized minimap distance from a rune before starting solve.
-rune_interact_tolerance = 0.035
+rune_interact_tolerance = 0.03
+
+# Synthetic 'up' presses are suppressed within this distance of a portal,
+# preventing accidental map changes. Set to 0 to disable.
+portal_lock_radius = 0.05
 
 # Whether the bot should save new player positions to the current layout
 record_layout = False

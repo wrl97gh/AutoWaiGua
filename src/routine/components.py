@@ -265,7 +265,7 @@ class Move(Command):
                             config.layout.add(*config.player_pos)
                         counter -= 1
                         if i < len(path) - 1:
-                            time.sleep(0.15)
+                            time.sleep(utils.rand_float(0.12, 0.2))
                 else:
                     d_y = point[1] - config.player_pos[1]
                     if abs(d_y) > settings.move_tolerance / math.sqrt(2):
@@ -279,7 +279,7 @@ class Move(Command):
                             config.layout.add(*config.player_pos)
                         counter -= 1
                         if i < len(path) - 1:
-                            time.sleep(0.05)
+                            time.sleep(utils.rand_float(0.04, 0.08))
                 local_error = utils.distance(config.player_pos, point)
                 global_error = utils.distance(config.player_pos, self.target)
                 toggle = not toggle
@@ -309,14 +309,14 @@ def step(direction, target):
 
 
 class Wait(Command):
-    """Waits for a set amount of time."""
+    """Waits for a set amount of time, slightly longer at random."""
 
     def __init__(self, duration):
         super().__init__(locals())
         self.duration = float(duration)
 
     def main(self):
-        time.sleep(self.duration)
+        time.sleep(self.duration * utils.rand_float(1.0, 1.06))
 
 
 class Walk(Command):
@@ -329,9 +329,9 @@ class Walk(Command):
 
     def main(self):
         key_down(self.direction)
-        time.sleep(self.duration)
+        time.sleep(self.duration * utils.rand_float(1.0, 1.05))
         key_up(self.direction)
-        time.sleep(0.05)
+        time.sleep(utils.rand_float(0.04, 0.08))
 
 
 class Fall(Command):

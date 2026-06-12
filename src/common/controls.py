@@ -1,11 +1,12 @@
 """Keyboard and mouse primitives with Windows and macOS implementations."""
 
 import time
+import threading
 from random import random
 
 from pynput import keyboard, mouse
 
-from src.common import config, platform
+from src.common import config, platform, settings
 
 
 _keyboard = keyboard.Controller()
@@ -239,9 +240,68 @@ def run_if_enabled(function):
     return wrapper
 
 
+# While set, only the owning thread may send key-down events. Used by the
+# struggle breaker so the bot thread's held movement keys and skill presses
+# cannot corrupt the alternating left/right QTE input. Releases (key_up)
+# always pass so held keys can be cleared.
+_input_paused_by = None
+
+
+def pause_input():
+    """Blocks key-down events from all threads except the caller's."""
+
+    global _input_paused_by
+    _input_paused_by = threading.get_ident()
+
+
+def resume_input():
+    global _input_paused_by
+    _input_paused_by = None
+
+
+def _wait_if_paused():
+    while _input_paused_by is not None and _input_paused_by != threading.get_ident():
+        time.sleep(0.01)
+
+
+# Throttles the console message for suppressed near-portal 'up' presses
+_last_portal_block = 0
+
+# Synthetic keys currently held down (key_down sent without key_up yet)
+_synthetic_held = set()
+
+
+def near_portal():
+    """Returns True when the player is within portal_lock_radius of a portal."""
+
+    radius = settings.portal_lock_radius
+    if not radius or not config.portal_positions:
+        return False
+    px, py = config.player_pos
+    for x, y in config.portal_positions:
+        if (px - x) ** 2 + (py - y) ** 2 <= radius * radius:
+            return True
+    return False
+
+
+def is_held(key):
+    """Returns whether KEY is currently held down by a synthetic key_down."""
+
+    return _normalize_key(key) in _synthetic_held
+
+
 @run_if_enabled
 def key_down(key):
+    _wait_if_paused()
     normalized = _normalize_key(key)
+    if normalized == 'up' and near_portal():
+        global _last_portal_block
+        now = time.time()
+        if now - _last_portal_block > 1:
+            _last_portal_block = now
+            print('[~] Suppressed UP press near a portal')
+        return
+    _synthetic_held.add(normalized)
     if platform.IS_MACOS and normalized in MACOS_QUARTZ_KEYS and _send_macos_key(normalized, True):
         return
 
@@ -252,6 +312,7 @@ def key_down(key):
 
 def key_up(key):
     normalized = _normalize_key(key)
+    _synthetic_held.discard(normalized)
     if platform.IS_MACOS and normalized in MACOS_QUARTZ_KEYS and _send_macos_key(normalized, False):
         return
 

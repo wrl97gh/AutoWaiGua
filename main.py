@@ -5,6 +5,7 @@ from src.modules.bot import Bot
 from src.modules.capture import Capture
 from src.modules.notifier import Notifier
 from src.modules.listener import Listener
+from src.modules.remote import Remote
 from src.modules.gui import GUI
 
 
@@ -12,6 +13,7 @@ bot = Bot()
 capture = Capture()
 notifier = Notifier()
 listener = Listener()
+remote = Remote()
 
 bot.start()
 while not bot.ready:
@@ -27,6 +29,10 @@ while not notifier.ready:
 
 listener.start()
 while not listener.ready:
+    time.sleep(0.01)
+
+remote.start()
+while not remote.ready:
     time.sleep(0.01)
 
 print('\n[~] Successfully initialized Auto Maple')

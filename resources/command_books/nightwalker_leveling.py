@@ -29,7 +29,7 @@ AUTO_TOGGLE_BATS_ON_FIRST_BUFF = False
 AUTO_USE_LONG_COOLDOWNS_IN_BUFF = True
 
 # If your 6th job skills are not unlocked/bound, leave these as False/None.
-AUTO_USE_ORIGIN_IN_BURST = False
+AUTO_USE_ORIGIN_IN_BURST = True
 
 
 # List of key mappings.
@@ -88,13 +88,21 @@ class Key:
 #########################
 #       Utilities       #
 #########################
-def _press_skill(key, presses=1, down_time=0.0, up_time=0.05):
+def _press_skill(key, presses=1, down_time=0.04, up_time=0.05):
     """Presses a key only if it is bound. Returns True if something was pressed."""
 
     if key is None:
         return False
     press(key, presses, down_time=down_time, up_time=up_time)
     return True
+
+
+def _cast_buffs(keys, presses=2, up_time=0.2):
+    """Casts each bound buff with a human-like random gap between casts."""
+
+    for key in keys:
+        if _press_skill(key, presses, up_time=up_time):
+            time.sleep(utils.rand_float(0.08, 0.4))
 
 
 def _hold_skill(key, hold_time):
@@ -130,10 +138,14 @@ def _face_direction_or_center(direction=None):
 
 
 def _ready(last_cast_time, cooldown, now=None):
-    """Returns True if a cooldown bucket is ready."""
+    """
+    Returns True if a cooldown bucket is ready. The threshold is re-sampled
+    with a late-side jitter each call so recasts never repeat at an exact
+    machine-like period.
+    """
 
     now = time.time() if now is None else now
-    return last_cast_time == 0 or now - last_cast_time > float(cooldown)
+    return last_cast_time == 0 or now - last_cast_time > float(cooldown) * utils.rand_float(1.0, 1.1)
 
 
 def step(direction, target):
@@ -146,6 +158,7 @@ def step(direction, target):
     if direction in ['up', 'down']:
         num_presses = 1
 
+    utils.human_pause(0.05, 0.05, 0.15)
     if config.stage_fright and direction != 'up' and utils.bernoulli(0.75):
         time.sleep(utils.rand_float(0.1, 0.3))
 
@@ -238,45 +251,42 @@ class Buff(Command):
         now = time.time()
 
         if AUTO_TOGGLE_BATS_ON_FIRST_BUFF and self.initial_toggle_time == 0:
-            _press_skill(Key.SHADOW_BAT, 2, up_time=0.1)
-            _press_skill(Key.RAVENOUS_BAT, 2, up_time=0.1)
+            _cast_buffs([Key.SHADOW_BAT, Key.RAVENOUS_BAT], up_time=0.1)
             self.initial_toggle_time = now
 
         # Around 120s class/common buffs.
         if _ready(self.cd120_buff_time, 120, now):
-            _press_skill(Key.GLORY_OF_GUARDIANS, 2, up_time=0.2)
-            _press_skill(Key.CYGNUS_BLESSING, 2, up_time=0.2)
+            _cast_buffs([Key.GLORY_OF_GUARDIANS, Key.CYGNUS_BLESSING])
             self.cd120_buff_time = now
 
         # Long cooldowns. Useful for leveling rotations, but disabled by default.
         if AUTO_USE_LONG_COOLDOWNS_IN_BUFF and _ready(self.cd180_buff_time, 180, now):
-            _press_skill(Key.LAST_RESORT, 2, up_time=0.2)
-            _press_skill(Key.SHADOW_ILLUSION, 2, up_time=0.2)
-            _press_skill(Key.SHADOW_SPEAR, 2, up_time=0.2)
-            _press_skill(Key.GREATER_DARK_SERVANT, 2, up_time=0.2)
-            _press_skill(Key.DOMINION, 2, up_time=0.2)
+            _cast_buffs([
+                Key.LAST_RESORT,
+                Key.SHADOW_ILLUSION,
+                Key.SHADOW_SPEAR,
+                Key.GREATER_DARK_SERVANT,
+                Key.DOMINION,
+            ])
             self.cd180_buff_time = now
 
         # Long duration class buffs.
         if _ready(self.cd200_buff_time, 200, now):
-            _press_skill(Key.DARK_SERVANT, 2, up_time=0.2)
-            _press_skill(Key.HASTE, 2, up_time=0.2)
-            _press_skill(Key.SPIRIT_PROJECTION, 2, up_time=0.2)
+            _cast_buffs([Key.DARK_SERVANT, Key.HASTE, Key.SPIRIT_PROJECTION])
             self.cd200_buff_time = now
 
         if _ready(self.cd900_buff_time, 900, now):
-            _press_skill(Key.MAPLE_WARRIOR, 2, up_time=0.2)
+            _cast_buffs([Key.MAPLE_WARRIOR])
             self.cd900_buff_time = now
 
         if _ready(self.decent_buff_time, settings.buff_cooldown, now):
-            for key in [
+            _cast_buffs([
                 Key.SPEED_INFUSION,
                 Key.HOLY_SYMBOL,
                 Key.SHARP_EYE,
                 Key.COMBAT_ORDERS,
                 Key.ADVANCED_BLESSING,
-            ]:
-                _press_skill(key, 3, up_time=0.3)
+            ], presses=3, up_time=0.3)
             self.decent_buff_time = now
 
 
@@ -289,11 +299,12 @@ class FlashJump(Command):
 
     def main(self):
         key_down(self.direction)
-        time.sleep(0.1)
+        time.sleep(utils.rand_float(0.08, 0.13))
         _press_skill(Key.JUMP, 1, down_time=0.08, up_time=0.08)
-        _press_skill(Key.FLASH_JUMP, 1, down_time=0.08, up_time=0.08)
+        _press_skill(Key.FLASH_JUMP, 1, down_time=0.08, up_time=0.04)
+        _press_skill(Key.SHADOW_SPARK, 1, down_time=0.08, up_time=0.04)
         key_up(self.direction)
-        time.sleep(0.5)
+        time.sleep(utils.rand_float(0.45, 0.62))
 
 
 class ShadowDodge(Command):
@@ -351,10 +362,11 @@ class _HorizontalAttack(Command):
         if key is None:
             return
 
-        time.sleep(0.05)
+        time.sleep(utils.rand_float(0.04, 0.08))
         key_down(self.direction)
-        time.sleep(0.05)
+        time.sleep(utils.rand_float(0.04, 0.08))
 
+        utils.human_pause(0.05, 0.05, 0.15)
         if config.stage_fright and utils.bernoulli(0.7):
             time.sleep(utils.rand_float(0.1, 0.3))
 
@@ -364,9 +376,9 @@ class _HorizontalAttack(Command):
         key_up(self.direction)
 
         if self.attacks > 2:
-            time.sleep(0.3)
+            time.sleep(utils.rand_float(0.26, 0.38))
         else:
-            time.sleep(0.2)
+            time.sleep(utils.rand_float(0.17, 0.27))
 
 
 class QuintupleStar(_HorizontalAttack):
@@ -670,49 +682,49 @@ class LevelingRotation(Command):
         if _ready(self.shadow_bite_time, 15, now):
             _press_skill(Key.SHADOW_BITE, 3)
             self.shadow_bite_time = now
-            time.sleep(0.15)
+            time.sleep(utils.rand_float(0.12, 0.25))
 
         if _ready(self.dark_omen_time, 20, now):
             _press_skill(Key.DARK_OMEN, 3)
             self.dark_omen_time = now
-            time.sleep(0.15)
+            time.sleep(utils.rand_float(0.12, 0.25))
 
         if self.use_common_summons and _ready(self.cygnus_phalanx_time, 30, now):
             _press_skill(Key.CYGNUS_PHALANX, 3)
             self.cygnus_phalanx_time = now
-            time.sleep(0.15)
+            time.sleep(utils.rand_float(0.12, 0.25))
 
         if self.use_common_summons and _ready(self.erda_shower_time, 60, now):
             _press_skill(Key.ERDA_SHOWER, 3)
             self.erda_shower_time = now
-            time.sleep(0.15)
+            time.sleep(utils.rand_float(0.12, 0.25))
 
         # Long cooldown map skills. Disabled unless use_long_cooldowns=True.
         if self.use_long_cooldowns:
             if _ready(self.shadow_spear_time, 120, now):
                 _press_skill(Key.SHADOW_SPEAR, 3)
                 self.shadow_spear_time = now
-                time.sleep(0.2)
+                time.sleep(utils.rand_float(0.17, 0.3))
 
             if _ready(self.greater_servant_time, 120, now):
                 _press_skill(Key.GREATER_DARK_SERVANT, 3)
                 self.greater_servant_time = now
-                time.sleep(0.2)
+                time.sleep(utils.rand_float(0.17, 0.3))
 
             if _ready(self.dominion_time, 180, now):
                 _press_skill(Key.DOMINION, 3)
                 self.dominion_time = now
-                time.sleep(0.3)
+                time.sleep(utils.rand_float(0.26, 0.4))
 
             if _ready(self.arachnid_time, 250, now):
                 _press_skill(Key.ARACHNID, 3)
                 self.arachnid_time = now
-                time.sleep(0.3)
+                time.sleep(utils.rand_float(0.26, 0.4))
 
             if _ready(self.solar_crest_time, 250, now):
                 _press_skill(Key.SOLAR_CREST, 3)
                 self.solar_crest_time = now
-                time.sleep(0.3)
+                time.sleep(utils.rand_float(0.26, 0.4))
 
 
 class NightWalkerBurst(Command):
@@ -732,23 +744,17 @@ class NightWalkerBurst(Command):
     def main(self):
         _face_direction_or_center(self.direction)
 
-        _press_skill(Key.CYGNUS_BLESSING, 2)
-        time.sleep(0.15)
-        _press_skill(Key.GLORY_OF_GUARDIANS, 2)
-        time.sleep(0.15)
-        _press_skill(Key.LAST_RESORT, 2)
-        time.sleep(0.15)
-        _press_skill(Key.SHADOW_ILLUSION, 2)
-        time.sleep(0.15)
+        _cast_buffs([Key.CYGNUS_BLESSING, Key.GLORY_OF_GUARDIANS,
+                     Key.LAST_RESORT, Key.SHADOW_ILLUSION])
         _press_skill(Key.SHADOW_SPEAR, 3)
-        time.sleep(0.3)
+        time.sleep(utils.rand_float(0.26, 0.4))
         _press_skill(Key.GREATER_DARK_SERVANT, 3)
-        time.sleep(0.3)
+        time.sleep(utils.rand_float(0.26, 0.4))
         _press_skill(Key.DOMINION, 3)
-        time.sleep(0.5)
+        time.sleep(utils.rand_float(0.45, 0.65))
 
         if self.use_origin:
             _press_skill(Key.SILENCE, 3)
-            time.sleep(1.0)
+            time.sleep(utils.rand_float(0.95, 1.2))
 
         RapidThrow(self.direction, channel_time=3.0).main()

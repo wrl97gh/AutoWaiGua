@@ -98,19 +98,25 @@ class Capture:
             if self.frame is None:
                 continue
 
-            self.minimap_template_scale = (1, 1)
             search_width = max(MMT_WIDTH, round(self.frame.shape[1] * MINIMAP_SEARCH_WIDTH_RATIO))
             search_width = min(self.frame.shape[1], search_width)
             minimap_search_frame = self.frame[:, :search_width]
-            tl, _ = utils.single_match(minimap_search_frame, MM_TL_TEMPLATE)
-            _, br = utils.single_match(minimap_search_frame, MM_BR_TEMPLATE)
+            match_profile = self._select_match_profile(minimap_search_frame)
+            self.minimap_template_scale = match_profile['template_scale']
+            player_template = match_profile['player_template']
+            pt_height, pt_width = player_template.shape
+            top_border = match_profile['top_border']
+            bottom_border = match_profile['bottom_border']
+
+            tl, _ = self._single_match(minimap_search_frame, match_profile['tl_template'])
+            _, br = self._single_match(minimap_search_frame, match_profile['br_template'])
             mm_tl = (
-                tl[0] + MINIMAP_BOTTOM_BORDER,
-                tl[1] + MINIMAP_TOP_BORDER
+                tl[0] + bottom_border,
+                tl[1] + top_border
             )
             mm_br = (
-                max(mm_tl[0] + PT_WIDTH, br[0] - MINIMAP_BOTTOM_BORDER),
-                max(mm_tl[1] + PT_HEIGHT, br[1] - MINIMAP_BOTTOM_BORDER)
+                max(mm_tl[0] + pt_width, br[0] - bottom_border),
+                max(mm_tl[1] + pt_height, br[1] - bottom_border)
             )
             self.minimap_ratio = (mm_br[0] - mm_tl[0]) / (mm_br[1] - mm_tl[1])
             self.minimap_sample = self.frame[mm_tl[1]:mm_br[1], mm_tl[0]:mm_br[0]]
@@ -130,7 +136,7 @@ class Capture:
                     minimap = self.frame[mm_tl[1]:mm_br[1], mm_tl[0]:mm_br[0]]
 
                     # Determine the player's position
-                    player = utils.multi_match(minimap, PLAYER_TEMPLATE, threshold=0.8)
+                    player = utils.multi_match(minimap, player_template, threshold=0.8)
                     if player:
                         config.player_pos = utils.convert_to_relative(player[0], minimap)
 

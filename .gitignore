@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local app state
+.settings/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Generated runtime artifacts
+assets/debug/
+assets/models/
+assets/rune_dataset/
+assets/struggle_template_preview.png

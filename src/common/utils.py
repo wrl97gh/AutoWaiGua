@@ -1,6 +1,7 @@
 """A collection of functions and classes used across multiple modules."""
 
 import math
+import time
 import queue
 import cv2
 import threading
@@ -157,10 +158,7 @@ def filter_color(img, ranges):
         mask = cv2.bitwise_or(mask, cv2.inRange(hsv, ranges[i][0], ranges[i][1]))
 
     # Mask the image
-    color_mask = mask > 0
-    result = np.zeros_like(img, np.uint8)
-    result[color_mask] = img[color_mask]
-    return result
+    return cv2.bitwise_and(img, img, mask=mask)
 
 
 def draw_location(minimap, pos, color):
@@ -224,6 +222,16 @@ def rand_float(start, end):
 
     assert start < end, 'START must be less than END'
     return (end - start) * random() + start
+
+
+def human_pause(probability=0.05, low=0.05, high=0.18):
+    """
+    Occasionally sleeps for a short random duration, imitating the brief
+    hesitations of a human player. Cheap enough to call on every action.
+    """
+
+    if random() < probability:
+        time.sleep((high - low) * random() + low)
 
 
 ##########################

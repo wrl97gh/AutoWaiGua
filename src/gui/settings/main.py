@@ -4,6 +4,9 @@ import tkinter as tk
 from src.gui.interfaces import KeyBindings
 from src.gui.settings.layout import Layout
 from src.gui.settings.pets import Pets
+from src.gui.settings.runes import Runes
+from src.gui.settings.alerts import Alerts
+from src.gui.settings.remote import RemoteControl
 from src.gui.interfaces import Tab, Frame
 from src.common import config
 
@@ -28,11 +31,17 @@ class Settings(Tab):
         self.layout.pack(side=tk.TOP, fill='x', expand=True, pady=(10, 0))
         self.pets = Pets(self.column1)
         self.pets.pack(side=tk.TOP, fill='x', expand=True, pady=(10, 0))
+        self.runes = Runes(self.column1)
+        self.runes.pack(side=tk.TOP, fill='x', expand=True, pady=(10, 0))
+        self.alerts = Alerts(self.column1)
+        self.alerts.pack(side=tk.TOP, fill='x', expand=True, pady=(10, 0))
 
         self.column2 = Frame(self)
         self.column2.grid(row=0, column=2, sticky=tk.NS, padx=10, pady=10)
+        self.remote = RemoteControl(self.column2)
+        self.remote.pack(side=tk.TOP, fill='x', expand=True)
         self.class_bindings = KeyBindings(self.column2, f'No Command Book Selected', None)
-        self.class_bindings.pack(side=tk.TOP, fill='x', expand=True)
+        self.class_bindings.pack(side=tk.TOP, fill='x', expand=True, pady=(10, 0))
 
     def update_class_bindings(self):
         self.class_bindings.destroy()
@@ -41,6 +50,6 @@ class Settings(Tab):
             self.column2,
             f'{class_name} Keybindings',
             config.bot.command_book,
-            scroll_height=650
+            scroll_height=520
         )
-        self.class_bindings.pack(side=tk.TOP, fill='x', expand=True)
+        self.class_bindings.pack(side=tk.TOP, fill='x', expand=True, pady=(10, 0))
