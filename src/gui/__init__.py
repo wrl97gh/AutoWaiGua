@@ -2,6 +2,7 @@ import src.gui.menu.main as menu
 import src.gui.view.main as view
 import src.gui.edit.main as edit
 import src.gui.settings.main as settings
+from src.gui.layout_builder import LayoutBuilder
 
 Menu = menu.Menu
 View = view.View

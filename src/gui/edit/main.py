@@ -6,6 +6,7 @@ import tkinter as tk
 from src.routine.components import Point, Command
 from src.gui.edit.minimap import Minimap
 from src.gui.edit.record import Record
+from src.gui.edit.resources import Resources
 from src.gui.edit.routine import Routine
 from src.gui.edit.status import Status
 from src.gui.interfaces import Tab, Frame, LabelFrame
@@ -18,20 +19,26 @@ class Edit(Tab):
         self.columnconfigure(0, weight=1)
         self.columnconfigure(4, weight=1)
 
+        self.resources = Resources(self)
+        self.resources.grid(
+            row=0, column=1, columnspan=3, sticky=tk.EW,
+            padx=10, pady=(10, 0)
+        )
+
         self.record = Record(self)
-        self.record.grid(row=2, column=3, sticky=tk.NSEW, padx=10, pady=10)
+        self.record.grid(row=3, column=3, sticky=tk.NSEW, padx=10, pady=10)
 
         self.minimap = Minimap(self)
-        self.minimap.grid(row=0, column=3, sticky=tk.NSEW, padx=10, pady=10)
+        self.minimap.grid(row=1, column=3, sticky=tk.NSEW, padx=10, pady=10)
 
         self.status = Status(self)
-        self.status.grid(row=1, column=3, sticky=tk.NSEW, padx=10, pady=10)
+        self.status.grid(row=2, column=3, sticky=tk.NSEW, padx=10, pady=10)
 
         self.routine = Routine(self)
-        self.routine.grid(row=0, column=1, rowspan=3, sticky=tk.NSEW, padx=10, pady=10)
+        self.routine.grid(row=1, column=1, rowspan=3, sticky=tk.NSEW, padx=10, pady=10)
 
         self.editor = Editor(self)
-        self.editor.grid(row=0, column=2, rowspan=3, sticky=tk.NSEW, padx=10, pady=10)
+        self.editor.grid(row=1, column=2, rowspan=3, sticky=tk.NSEW, padx=10, pady=10)
 
 
 class Editor(LabelFrame):

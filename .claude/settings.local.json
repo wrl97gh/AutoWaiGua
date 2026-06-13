@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(python3 -m pip list)",
+      "Bash(python3 /tmp/rune_bench.py)",
+      "Bash(conda env *)",
+      "Read(//opt/anaconda3/envs/**)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python --version)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python -m pip list)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python /tmp/rune_bench.py)",
+      "Bash(BENCH_CPU=1 /opt/anaconda3/envs/automaple/bin/python /tmp/rune_bench.py)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python -c ' *)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python /tmp/rune_compare.py)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python -m py_compile src/detection/detection2.py src/modules/bot.py)",
+      "Bash(grep -E \"\\\\.pyc$|\\\\.DS_Store|ipynb_checkpoints\")",
+      "Bash(git rm *)",
+      "Bash(git add *)",
+      "Bash(grep -cE \"\\\\.pyc$|\\\\.DS_Store$|ipynb_checkpoints\")",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python -m py_compile src/modules/bot.py src/modules/notifier.py src/common/utils.py src/detection/detection.py src/detection/detection2.py)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python -)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python -c \"import PIL; from PIL import Image, ImageTk; print\\('Pillow', PIL.__version__, 'with ImageTk OK'\\)\")",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python -m py_compile src/detection/rune_roi.py src/detection/rune_dataset.py src/detection/detection.py src/modules/bot.py src/gui/settings/runes.py tools/rune_labeler.py tools/rune_eval.py)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python tools/rune_labeler.py --stats)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python tools/make_struggle_templates.py \"/Users/ronglinwang/Desktop/截屏2026-06-10 下午10.25.21.png\" --expand 1.3)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python tools/make_struggle_templates.py \"/Users/ronglinwang/Desktop/截屏2026-06-10 下午10.25.21.png\")",
+      "Bash(find ~/Downloads ~/Desktop ~/Documents -maxdepth 2 \\\\\\( -name \"*.png\" -o -name \"*.jpg\" \\\\\\) -newermt \"2026-06-11 00:00\" 2>/dev/null | head -5; echo \"---\"; ls -t /var/folders/gv/cm16hvys2t54lbzd1wv6z5ww0000gn/T/TemporaryItems 2>/dev/null | head; find /tmp -maxdepth 2 -name \"*.png\" -newermt \"2026-06-11 00:00\" 2>/dev/null | grep -v struggle | grep -v low_ | head -5)",
+      "Bash(git checkout *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python tools/build_layout.py greenmap --frames 'assets/debug/rune/20260601_1*/*_01_frame.png' --dry-run)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python tools/build_layout.py eotw --frames 'assets/debug/rune/20260603_0*/*_01_frame.png' --dry-run)",
+      "WebFetch(domain:maplestorywiki.net)",
+      "WebFetch(domain:grandislibrary.com)",
+      "WebSearch",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python tools/train_rune_cnn.py)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python tools/train_rune_cnn.py --epochs 40)",
+      "Bash(/opt/anaconda3/envs/automaple/bin/python tools/train_rune_cnn.py --rebuild-cache --epochs 40)"
+    ]
+  }
+}

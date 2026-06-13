@@ -5,14 +5,15 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 from src.common import config, settings
-from src.gui import Menu, View, Edit, Settings
+from src.gui import Menu, View, Edit, LayoutBuilder, Settings
 
 
 class GUI:
     DISPLAY_FRAME_RATE = 30
     RESOLUTIONS = {
         'DEFAULT': '800x800',
-        'Edit': '1400x800'
+        'Edit': '1400x800',
+        'Settings': '1050x850'
     }
 
     def __init__(self):
@@ -36,6 +37,7 @@ class GUI:
 
         self.view = View(self.navigation)
         self.edit = Edit(self.navigation)
+        self.layout_builder = LayoutBuilder(self.navigation)
         self.settings = Settings(self.navigation)
 
         self.navigation.pack(expand=True, fill='both')

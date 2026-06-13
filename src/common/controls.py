@@ -272,14 +272,19 @@ _synthetic_held = set()
 
 
 def near_portal():
-    """Returns True when the player is within portal_lock_radius of a portal."""
+    """
+    Returns True when the player is in a portal's UP-suppression zone.
+    The zone is an ellipse: entering a portal needs precise horizontal
+    alignment, so the horizontal reach is tighter than the vertical one
+    (which mostly guards against held-UP while landing on the portal).
+    """
 
-    radius = settings.portal_lock_radius
+    radius = settings.portal_lock_radius * config.portal_lock_scale
     if not radius or not config.portal_positions:
         return False
     px, py = config.player_pos
     for x, y in config.portal_positions:
-        if (px - x) ** 2 + (py - y) ** 2 <= radius * radius:
+        if abs(px - x) <= radius * 0.6 and abs(py - y) <= radius:
             return True
     return False
 

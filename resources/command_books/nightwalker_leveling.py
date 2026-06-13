@@ -701,7 +701,7 @@ class LevelingRotation(Command):
 
         # Long cooldown map skills. Disabled unless use_long_cooldowns=True.
         if self.use_long_cooldowns:
-            if _ready(self.shadow_spear_time, 120, now):
+            if _ready(self.shadow_spear_time, 60, now):
                 _press_skill(Key.SHADOW_SPEAR, 3)
                 self.shadow_spear_time = now
                 time.sleep(utils.rand_float(0.17, 0.3))
@@ -711,7 +711,7 @@ class LevelingRotation(Command):
                 self.greater_servant_time = now
                 time.sleep(utils.rand_float(0.17, 0.3))
 
-            if _ready(self.dominion_time, 180, now):
+            if _ready(self.dominion_time, 120, now):
                 _press_skill(Key.DOMINION, 3)
                 self.dominion_time = now
                 time.sleep(utils.rand_float(0.26, 0.4))

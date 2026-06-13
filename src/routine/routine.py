@@ -17,6 +17,8 @@ def update(func):
         result = func(self, *args, **kwargs)
         config.gui.set_routine(self.display)
         config.gui.view.details.update_details()
+        if hasattr(config.gui.edit, 'resources'):
+            config.gui.edit.resources.update_save_state()
         return result
     return f
 
@@ -174,6 +176,7 @@ class Routine:
 
         with open(file_path, 'w') as file:
             file.write('\n'.join(result))
+        self.path = file_path
         self.dirty = False
 
         utils.print_separator()
@@ -188,6 +191,8 @@ class Routine:
         settings.reset()
 
         config.gui.clear_routine_info()
+        if hasattr(config.gui.edit, 'resources'):
+            config.gui.edit.resources.sync_selection()
 
     def load(self, file=None):
         """
@@ -229,7 +234,10 @@ class Routine:
         config.layout = Layout.load(file)
         config.gui.view.status.set_routine(basename(file))
         config.gui.edit.minimap.draw_default()
+        if hasattr(config.gui.edit, 'resources'):
+            config.gui.edit.resources.sync_selection()
         print(f" ~  Finished loading routine '{basename(splitext(file)[0])}'.")
+        return True
 
     def compile(self, file):
         self.labels = {}

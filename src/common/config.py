@@ -31,6 +31,10 @@ path = []
 # Portal locations on the minimap (relative coordinates), updated by Notifier
 portal_positions = []
 
+# Scales the portal UP-suppression zone; the bot shrinks it while approaching
+# a rune so portals can't block a required climb
+portal_lock_scale = 1.0
+
 
 #############################
 #       Shared Modules      #

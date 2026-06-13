@@ -60,6 +60,13 @@ class Runes(LabelFrame):
             text='Detection 2',
             command=self._on_change
         ).pack(side=tk.LEFT)
+        tk.Radiobutton(
+            engine_row,
+            variable=self.detection_engine,
+            value='detection3',
+            text='Detection 3 (CNN)',
+            command=self._on_change
+        ).pack(side=tk.LEFT)
 
     def _on_change(self):
         self.rune_settings.set('Save debug screenshots', self.save_debug.get())

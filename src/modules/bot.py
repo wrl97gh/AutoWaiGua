@@ -5,7 +5,7 @@ import time
 import os
 from datetime import datetime
 from src.common import config, settings, utils
-from src.detection import detection, detection2
+from src.detection import detection, detection2, detection3
 from src.detection.rune_dataset import RuneDatasetRecorder
 from src.routine.routine import Routine
 from src.command_book.command_book import CommandBook
@@ -18,6 +18,8 @@ RUNE_PANEL_WAIT_TIMEOUT = 0.8
 RUNE_FAST_LEGACY_FRAMES = 2
 RUNE_VOTE_FRAMES = 3
 RUNE_LEGACY_FALLBACK_FRAMES = 1
+RUNE_APPROACH_PORTAL_LOCK_SCALE = 0.2
+RUNE_APPROACH_HORIZONTAL_OFFSET = 0.12
 
 # Occasional human-like idle breaks: seconds between breaks and break length
 BREAK_INTERVAL = (1200, 2700)
@@ -122,7 +124,14 @@ class Bot(Configurable):
         :return:        None
         """
 
-        if not self._approach_and_interact_rune():
+        # Shrink the portal UP-suppression zone during the approach so a portal
+        # below the rune cannot block a required climb. Restored in finally.
+        config.portal_lock_scale = 0.3
+        try:
+            approached = self._approach_and_interact_rune()
+        finally:
+            config.portal_lock_scale = 1.0
+        if not approached:
             print('Could not get close enough to rune, retrying after the next rune detection')
             self.rune_active = False
             return
@@ -385,14 +394,25 @@ class Bot(Configurable):
 
     @staticmethod
     def _rune_detection_module():
-        return detection2 if Bot._rune_detection_name() == 'detection2' else detection
+        name = Bot._rune_detection_name()
+        if name == 'detection2':
+            return detection2
+        if name == 'detection3':
+            return detection3
+        return detection
 
     @staticmethod
     def _enter_rune_solution(solution):
         print('Solution found, entering result')
-        for arrow in solution:
-            press(arrow, 1, down_time=0.1)
-        time.sleep(1)
+        # Brief reaction time before typing, like a player reading the rune
+        time.sleep(utils.rand_float(0.2, 0.45))
+        for i, arrow in enumerate(solution):
+            press(arrow, 1, down_time=utils.rand_float(0.05, 0.09))
+            if i < len(solution) - 1:
+                time.sleep(utils.rand_float(0.08, 0.2))     # Uneven gap between keys
+                if utils.bernoulli(0.1):                    # Occasional brief hesitation
+                    time.sleep(utils.rand_float(0.12, 0.28))
+        time.sleep(utils.rand_float(0.4, 0.7))
         print(f'Rune solved at: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
 
     @staticmethod
@@ -406,36 +426,72 @@ class Bot(Configurable):
         return config.capture.frame, config.capture.frame_id
 
     def _approach_and_interact_rune(self, attempts=3):
-        move = self.command_book['move']
-        adjust = self.command_book['adjust']
-        flashjump = self.command_book['flashjump'] if 'flashjump' in self.command_book else None
+        previous_portal_lock_scale = config.portal_lock_scale
+        config.portal_lock_scale = RUNE_APPROACH_PORTAL_LOCK_SCALE
+        try:
+            move = self.command_book['move']
+            adjust = self.command_book['adjust']
+            flashjump = self.command_book['flashjump'] if 'flashjump' in self.command_book else None
+            approach_sides = self._rune_approach_sides()
 
-        for _ in range(attempts):
-            if self._interact_if_close_to_rune('Rune distance'):
-                return True
+            for attempt in range(attempts):
+                if self._interact_if_close_to_rune('Rune distance'):
+                    return True
 
-            move(*self.rune_pos).execute()
-            adjust(*self.rune_pos).execute()
+                side = approach_sides[attempt % len(approach_sides)]
+                approach_target = self._rune_approach_target(side)
+                print(f'Trying to approach rune from the {side}: '
+                      f'({approach_target[0]:.3f}, {approach_target[1]:.3f})')
+                move(*approach_target).execute()
+                adjust(*approach_target).execute()
 
-            if self._interact_if_close_to_rune('Rune distance after adjust'):
-                return True
-            if self._catch_rune_interact_window('Rune distance after adjust settle'):
-                return True
-
-            if flashjump is not None:
-                print('Trying upward flash jump to approach rune')
-                flashjump('up').execute()
+                move(*self.rune_pos).execute()
                 adjust(*self.rune_pos).execute()
-                if self._interact_if_close_to_rune('Rune distance after upward flash jump'):
-                    return True
-                if self._catch_rune_interact_window('Rune distance after upward flash jump settle'):
-                    return True
-            else:
-                print('No FlashJump command found in command book')
 
-            time.sleep(0.1)
+                if self._interact_if_close_to_rune('Rune distance after adjust'):
+                    return True
+                if self._catch_rune_interact_window('Rune distance after adjust settle'):
+                    return True
 
-        return self._interact_if_close_to_rune('Rune distance')
+                if flashjump is not None:
+                    print('Trying upward flash jump to approach rune')
+                    flashjump('up').execute()
+                    adjust(*self.rune_pos).execute()
+                    if self._interact_if_close_to_rune('Rune distance after upward flash jump'):
+                        return True
+                    if self._catch_rune_interact_window('Rune distance after upward flash jump settle'):
+                        return True
+                else:
+                    print('No FlashJump command found in command book')
+
+                time.sleep(0.1)
+
+            return self._interact_if_close_to_rune('Rune distance')
+        finally:
+            config.portal_lock_scale = previous_portal_lock_scale
+
+    def _rune_approach_sides(self):
+        """Returns an edge-aware randomized order for approaching the rune."""
+
+        offset = max(RUNE_APPROACH_HORIZONTAL_OFFSET, settings.move_tolerance * 1.25)
+        rune_x = self.rune_pos[0]
+        sides = []
+        if rune_x - offset >= 0:
+            sides.append('left')
+        if rune_x + offset <= 1:
+            sides.append('right')
+
+        if not sides:
+            sides.append('left' if rune_x >= 0.5 else 'right')
+        elif len(sides) == 2 and utils.bernoulli(0.5):
+            sides.reverse()
+        return sides
+
+    def _rune_approach_target(self, side):
+        offset = max(RUNE_APPROACH_HORIZONTAL_OFFSET, settings.move_tolerance * 1.25)
+        direction = -1 if side == 'left' else 1
+        x = min(1.0, max(0.0, self.rune_pos[0] + direction * offset))
+        return x, self.rune_pos[1]
 
     def _catch_rune_interact_window(self, label, duration=0.35, interval=0.02):
         deadline = time.time() + duration
@@ -458,5 +514,8 @@ class Bot(Configurable):
         try:
             self.command_book = CommandBook(file)
             config.gui.settings.update_class_bindings()
+            if hasattr(config.gui.edit, 'resources'):
+                config.gui.edit.resources.sync_selection()
+            return True
         except ValueError:
-            pass    # TODO: UI warning popup, say check cmd for errors
+            return False    # TODO: UI warning popup, say check cmd for errors

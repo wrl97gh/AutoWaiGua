@@ -75,14 +75,17 @@ class Layout:
         self.name = name
         self.root = None
 
-    @utils.run_if_enabled
-    def add(self, x, y):
+    def add(self, x, y, force=False):
         """
         Adds a Node to the quadtree at position (X, Y) if it does not already exist.
         :param x:   The x-position of the new point.
         :param y:   The y-position of the new point.
+        :param force: Add even while the bot is disabled (used by Layout Builder).
         :return:    None
         """
+
+        if not config.enabled and not force:
+            return
 
         def add_helper(node):
             if not node:
